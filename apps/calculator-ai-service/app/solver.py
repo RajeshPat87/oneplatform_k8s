@@ -15,7 +15,7 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://calculator-backend.apps.svc.
 
 PROMPT_TEMPLATE = """You translate natural-language math word problems into a single
 arithmetic expression using only digits, parentheses, and +, -, *, /, **, %.
-Do NOT invoke functions or names. Reply with JSON: {"expression": "<expr>"}.
+Do NOT invoke functions or names. Reply with JSON: {{"expression": "<expr>"}}.
 
 Problem: {question}
 """

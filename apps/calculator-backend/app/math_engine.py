@@ -35,7 +35,10 @@ def _eval(node: ast.AST) -> float:
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
-        return _BIN_OPS[type(node.op)](_eval(node.left), _eval(node.right))
+        try:
+            return _BIN_OPS[type(node.op)](_eval(node.left), _eval(node.right))
+        except ArithmeticError as e:
+            raise UnsafeExpressionError(f"Arithmetic error: {e}") from e
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
         return _UNARY_OPS[type(node.op)](_eval(node.operand))
     raise UnsafeExpressionError(f"Disallowed expression node: {type(node).__name__}")

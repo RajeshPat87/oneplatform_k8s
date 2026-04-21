@@ -33,14 +33,14 @@ resource "azurerm_kubernetes_cluster" "aks" {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
     network_policy      = "cilium"
-    network_dataplane   = "cilium"
+    network_data_plane  = "cilium"
   }
 
   oms_agent {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.obs.id
   }
 
-  azure_policy_enabled = true
+  azure_policy_enabled              = true
   role_based_access_control_enabled = true
 
   tags = azurerm_resource_group.stack["aks"].tags
