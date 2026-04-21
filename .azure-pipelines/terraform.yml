@@ -1,0 +1,120 @@
+name: terraform-$(Date:yyyyMMdd)-$(Rev:rr)
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - platform-infra/terraform/*
+      - .azure-pipelines/terraform.yml
+
+pr:
+  paths:
+    include:
+      - platform-infra/terraform/*
+
+variables:
+  - group: oneplatform-common         # AZURE_SUBSCRIPTION_ID
+  - group: oneplatform-tf-backend     # TF_BACKEND_* vars
+  - name: TF_DIR
+    value: platform-infra/terraform
+  - name: TF_VERSION
+    value: '1.9.6'
+  - name: AZURE_SERVICE_CONNECTION
+    value: azure-oneplatform
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: Lint
+        steps:
+          - bash: sudo ./scripts/install-tool.sh terraform $(TF_VERSION)
+            displayName: 'Install terraform pinned'
+          - bash: terraform -chdir=$(TF_DIR) fmt -check -recursive
+            displayName: 'terraform fmt -check'
+          - bash: terraform -chdir=$(TF_DIR) init -backend=false
+            displayName: 'terraform init (no backend)'
+          - bash: terraform -chdir=$(TF_DIR) validate
+            displayName: 'terraform validate'
+          - bash: |
+              curl -sSLf https://github.com/terraform-linters/tflint/releases/latest/download/tflint_linux_amd64.zip -o /tmp/tflint.zip
+              sudo unzip -o /tmp/tflint.zip -d /usr/local/bin
+              tflint --chdir=$(TF_DIR) --recursive
+            displayName: 'tflint'
+          - bash: |
+              curl -sSLf https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /tmp/tfsec
+              sudo install /tmp/tfsec /usr/local/bin/tfsec
+              tfsec $(TF_DIR)
+            displayName: 'tfsec'
+
+  - stage: Plan
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: Plan
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Ensure TF backend'
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: ./scripts/ensure-tf-backend.sh
+
+          - task: AzureCLI@2
+            displayName: 'terraform init + plan'
+            inputs:
+              azureSubscription: $(AZURE_SERVICE_CONNECTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                sudo ./scripts/install-tool.sh terraform $(TF_VERSION)
+                export ARM_USE_AZUREAD=true
+                terraform -chdir=$(TF_DIR) init \
+                  -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP_NAME" \
+                  -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT_NAME" \
+                  -backend-config="container_name=$TF_BACKEND_CONTAINER_NAME" \
+                  -backend-config="key=oneplatform.tfstate"
+                terraform -chdir=$(TF_DIR) plan -var "subscription_id=$AZURE_SUBSCRIPTION_ID" -out=tfplan
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(TF_DIR)/tfplan'
+              artifactName: 'tfplan'
+
+  - stage: Apply
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'IndividualCI'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: Apply
+        environment: platform-dev   # ADO Environment gates go here
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Ensure TF backend'
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: ./scripts/ensure-tf-backend.sh
+
+                - task: AzureCLI@2
+                  displayName: 'terraform init + apply'
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      sudo ./scripts/install-tool.sh terraform $(TF_VERSION)
+                      export ARM_USE_AZUREAD=true
+                      terraform -chdir=$(TF_DIR) init \
+                        -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP_NAME" \
+                        -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT_NAME" \
+                        -backend-config="container_name=$TF_BACKEND_CONTAINER_NAME" \
+                        -backend-config="key=oneplatform.tfstate"
+                      terraform -chdir=$(TF_DIR) apply -auto-approve -var "subscription_id=$AZURE_SUBSCRIPTION_ID"

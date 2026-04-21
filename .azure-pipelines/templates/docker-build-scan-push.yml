@@ -1,0 +1,45 @@
+parameters:
+  - name: app
+    type: string
+  - name: appDir
+    type: string
+  - name: acrServiceConnection
+    type: string
+    default: acr-oneplatform
+  - name: acrLoginServer
+    type: string
+  - name: trivyVersion
+    type: string
+    default: '0.55.2'
+
+steps:
+  - task: Docker@2
+    displayName: 'Docker login to ACR'
+    inputs:
+      command: login
+      containerRegistry: ${{ parameters.acrServiceConnection }}
+
+  - bash: |
+      set -euo pipefail
+      TAG="$(echo "$BUILD_SOURCEVERSION" | cut -c1-7)"
+      echo "##vso[task.setvariable variable=IMAGE_TAG;isOutput=true]$TAG"
+      docker build -t "${{ parameters.acrLoginServer }}/${{ parameters.app }}:$TAG" ${{ parameters.appDir }}
+    name: build
+    displayName: 'Docker build'
+
+  - bash: |
+      set -euo pipefail
+      sudo ./scripts/install-tool.sh trivy ${{ parameters.trivyVersion }}
+      trivy image --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed \
+        --format sarif --output trivy.sarif \
+        "${{ parameters.acrLoginServer }}/${{ parameters.app }}:$(build.IMAGE_TAG)"
+    displayName: 'Trivy scan (fail on HIGH/CRITICAL)'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: 'trivy.sarif'
+      artifactName: 'trivy-${{ parameters.app }}'
+
+  - bash: docker push "${{ parameters.acrLoginServer }}/${{ parameters.app }}:$(build.IMAGE_TAG)"
+    displayName: 'Push to ACR'

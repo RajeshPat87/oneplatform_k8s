@@ -1,0 +1,30 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xstoragebuckets.platform.oneplatform.io
+spec:
+  group: platform.oneplatform.io
+  names:
+    kind: XStorageBucket
+    plural: xstoragebuckets
+  claimNames:
+    kind: StorageBucket
+    plural: storagebuckets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  required: [name, region]
+                  properties:
+                    name:   { type: string }
+                    region: { type: string }
+                    tier:   { type: string, enum: [Standard, Premium], default: Standard }

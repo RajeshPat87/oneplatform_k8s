@@ -1,0 +1,27 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: storagebucket.azure.oneplatform.io
+  labels:
+    provider: azure
+spec:
+  compositeTypeRef:
+    apiVersion: platform.oneplatform.io/v1alpha1
+    kind: XStorageBucket
+  resources:
+    - name: storage-account
+      base:
+        apiVersion: storage.azure.upbound.io/v1beta1
+        kind: Account
+        spec:
+          forProvider:
+            accountTier: Standard
+            accountReplicationType: LRS
+            minTlsVersion: TLS1_2
+      patches:
+        - fromFieldPath: spec.parameters.name
+          toFieldPath: metadata.name
+        - fromFieldPath: spec.parameters.region
+          toFieldPath: spec.forProvider.location
+        - fromFieldPath: spec.parameters.tier
+          toFieldPath: spec.forProvider.accountTier

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: calculator-frontend-dev
+  namespace: argocd
+spec:
+  project: oneplatform
+  source:
+    repoURL: https://github.com/RajeshPat87/oneplatform_k8s
+    targetRevision: main
+    path: helm/calculator-frontend
+    helm:
+      valueFiles: [values.yaml]
+      values: |
+        image:
+          tag: "0.1.0"
+        ingress:
+          host: calculator.dev.oneplatform.local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

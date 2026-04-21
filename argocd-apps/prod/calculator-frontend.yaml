@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: calculator-frontend-prod
+  namespace: argocd
+spec:
+  project: oneplatform
+  source:
+    repoURL: https://github.com/RajeshPat87/oneplatform_k8s
+    targetRevision: main
+    path: helm/calculator-frontend
+    helm:
+      valueFiles: [values.yaml]
+      values: |
+        replicaCount: 4
+        image: { tag: "0.1.0" }
+        ingress: { host: calculator.oneplatform.com }
+        resources:
+          requests: { cpu: 50m, memory: 128Mi }
+          limits:   { cpu: 500m, memory: 512Mi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  syncPolicy:
+    syncOptions: [CreateNamespace=true]

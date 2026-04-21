@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oneplatform-prod
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: oneplatform
+  source:
+    repoURL: https://github.com/RajeshPat87/oneplatform_k8s
+    targetRevision: main
+    path: argocd-apps/prod
+    directory:
+      recurse: true
+      exclude: 'app-of-apps.yaml'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    # Prod is manual-sync: guarded by change approval.
+    syncOptions: [CreateNamespace=true]

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: calculator-backend
+description: OnePlatform calculator core math microservice
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

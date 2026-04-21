@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "calculator-ai-service.fullname" . }}
+  labels:
+    {{- include "calculator-ai-service.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+  selector:
+    {{- include "calculator-ai-service.selectorLabels" . | nindent 4 }}

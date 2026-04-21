@@ -1,0 +1,47 @@
+replicaCount: 2
+
+image:
+  repository: acroneplatform.azurecr.io/calculator-backend
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:
+    path: /healthz
+  readiness:
+    path: /readyz
+
+keda:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuThreshold: 70
+
+serviceMonitor:
+  enabled: true
+
+ingress:
+  enabled: false
+  className: nginx
+  host: api.oneplatform.local
+  path: /backend

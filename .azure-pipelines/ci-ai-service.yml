@@ -1,0 +1,57 @@
+name: ci-ai-service-$(Date:yyyyMMdd)-$(Rev:rr)
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - apps/calculator-ai-service/*
+      - helm/calculator-ai-service/*
+      - .azure-pipelines/ci-ai-service.yml
+      - .azure-pipelines/templates/*
+
+pr:
+  paths:
+    include:
+      - apps/calculator-ai-service/*
+      - helm/calculator-ai-service/*
+
+variables:
+  - group: oneplatform-common
+  - name: APP
+    value: calculator-ai-service
+  - name: APP_DIR
+    value: apps/calculator-ai-service
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Verify
+    jobs:
+      - job: LintTest
+        steps:
+          - template: templates/python-lint-test.yml
+            parameters:
+              appDir: $(APP_DIR)
+      - job: SAST
+        steps:
+          - template: templates/sast-semgrep.yml
+            parameters:
+              config: 'p/ci p/python p/security-audit'
+
+  - stage: BuildPush
+    dependsOn: Verify
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'IndividualCI'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: Image
+        steps:
+          - template: templates/docker-build-scan-push.yml
+            parameters:
+              app: $(APP)
+              appDir: $(APP_DIR)
+              acrLoginServer: $(ACR_LOGIN_SERVER)
+          - template: templates/gitops-bump.yml
+            parameters:
+              app: $(APP)
+              env: dev

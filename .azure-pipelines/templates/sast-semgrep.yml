@@ -1,0 +1,18 @@
+parameters:
+  - name: config
+    type: string
+    default: 'p/ci p/security-audit'
+
+steps:
+  - bash: |
+      set -euo pipefail
+      python -m pip install --upgrade pip
+      pip install semgrep==1.94.0
+      semgrep scan --error --config ${{ parameters.config }} --sarif --output semgrep.sarif
+    displayName: 'SAST (Semgrep)'
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: 'semgrep.sarif'
+      artifactName: 'semgrep-sarif'

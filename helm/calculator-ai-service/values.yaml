@@ -1,0 +1,43 @@
+replicaCount: 2
+
+image:
+  repository: acroneplatform.azurecr.io/calculator-ai-service
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8001
+
+env:
+  OLLAMA_HOST: "http://ollama.mlops.svc.cluster.local:11434"
+  OLLAMA_MODEL: "llama3.1:8b"
+  BACKEND_URL: "http://calculator-backend.apps.svc.cluster.local:8000"
+  LOG_LEVEL: "INFO"
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 1,    memory: 1Gi }
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+probes:
+  liveness:  { path: /healthz }
+  readiness: { path: /readyz }
+
+keda:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 6
+  promServerAddress: "http://prometheus-server.observability.svc.cluster.local:80"
+  query: 'sum(rate(http_requests_total{service="calculator-ai-service"}[1m]))'
+  threshold: "5"
+
+serviceMonitor:
+  enabled: true

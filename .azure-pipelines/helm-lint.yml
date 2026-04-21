@@ -1,0 +1,49 @@
+name: helm-lint-$(Date:yyyyMMdd)-$(Rev:rr)
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - helm/*
+      - argocd-apps/*
+      - policies/*
+      - .azure-pipelines/helm-lint.yml
+
+pr:
+  paths:
+    include:
+      - helm/*
+      - argocd-apps/*
+      - policies/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: HELM_VERSION
+    value: '3.15.4'
+
+steps:
+  - bash: sudo ./scripts/install-tool.sh helm $(HELM_VERSION)
+    displayName: 'Install helm pinned'
+
+  - bash: |
+      set -euo pipefail
+      for c in helm/*; do
+        [ -d "$c" ] || continue
+        echo "::group::lint $c"
+        helm lint "$c"
+        echo "::endgroup::"
+      done
+    displayName: 'helm lint all charts'
+
+  - bash: |
+      set -euo pipefail
+      curl -sSLf https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar -xz
+      sudo install kubeconform /usr/local/bin/kubeconform
+      for c in helm/*; do
+        [ -d "$c" ] || continue
+        helm template "$c" | kubeconform -strict -summary -ignore-missing-schemas
+      done
+    displayName: 'kubeconform validate rendered charts'

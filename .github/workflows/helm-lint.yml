@@ -1,0 +1,42 @@
+name: helm-lint
+
+on:
+  push:
+    branches: [main]
+    paths: ['helm/**', 'policies/**', 'argocd-apps/**']
+  pull_request:
+    paths: ['helm/**', 'policies/**', 'argocd-apps/**']
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: v3.15.4 }
+      - name: helm lint all charts
+        run: |
+          for c in helm/*; do
+            [ -d "$c" ] || continue
+            echo "::group::lint $c"
+            helm lint "$c"
+            echo "::endgroup::"
+          done
+      - name: Install kubeconform
+        run: |
+          curl -sSLf https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar -xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Validate rendered charts
+        run: |
+          for c in helm/*; do
+            [ -d "$c" ] || continue
+            helm template "$c" | kubeconform -strict -summary -ignore-missing-schemas
+          done
+  promote-staging:
+    needs: lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Noop promotion stub
+        run: echo "Manual promotion to staging happens via PR from dev->staging in argocd-apps/"

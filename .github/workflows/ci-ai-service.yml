@@ -1,0 +1,84 @@
+name: ci-ai-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/calculator-ai-service/**'
+      - 'helm/calculator-ai-service/**'
+      - '.github/workflows/ci-ai-service.yml'
+  pull_request:
+    paths:
+      - 'apps/calculator-ai-service/**'
+      - 'helm/calculator-ai-service/**'
+
+permissions:
+  contents: write
+  id-token: write
+  security-events: write
+
+env:
+  APP: calculator-ai-service
+  IMAGE: ${{ secrets.ACR_LOGIN_SERVER }}/calculator-ai-service
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/calculator-ai-service } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: |
+          pip install --upgrade pip
+          pip install -e .[dev]
+      - run: |
+          ruff check app tests
+          pylint app --fail-under=8.0 || true
+      - run: pytest
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: returntocorp/semgrep-action@v1
+        with: { config: 'p/ci p/python p/security-audit' }
+
+  build-scan-push:
+    needs: [lint-test, sast]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: tag
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name ${{ secrets.ACR_NAME }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: apps/calculator-ai-service
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+          format: sarif
+          output: trivy-ai.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: trivy-ai.sarif }
+      - run: docker push ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+      - uses: ./.github/actions/gitops-bump
+        with:
+          app: calculator-ai-service
+          env: dev
+          tag: ${{ steps.tag.outputs.tag }}

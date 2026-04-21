@@ -1,0 +1,17 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "calculator-ai-service.fullname" . }}
+spec:
+  scaleTargetRef:
+    name: {{ include "calculator-ai-service.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.keda.promServerAddress | quote }}
+        query: {{ .Values.keda.query | quote }}
+        threshold: {{ .Values.keda.threshold | quote }}
+{{- end }}

@@ -1,0 +1,38 @@
+parameters:
+  - name: app
+    type: string
+  - name: env
+    type: string
+    default: dev
+  - name: tagVar
+    type: string
+    default: 'build.IMAGE_TAG'
+
+steps:
+  - checkout: self
+    persistCredentials: true
+    fetchDepth: 0
+
+  - bash: |
+      set -euo pipefail
+      git config user.name  "oneplatform-bot"
+      git config user.email "oneplatform-bot@users.noreply.dev.azure.com"
+    displayName: 'Configure git identity'
+
+  - bash: |
+      set -euo pipefail
+      python3 scripts/gitops_bump.py \
+        --env "${{ parameters.env }}" \
+        --app "${{ parameters.app }}" \
+        --tag "$(${{ parameters.tagVar }})"
+    displayName: 'Rewrite image tag in argocd-apps/${{ parameters.env }}'
+
+  - bash: |
+      set -euo pipefail
+      git add "argocd-apps/${{ parameters.env }}/${{ parameters.app }}.yaml"
+      if git diff --cached --quiet; then
+        echo "nothing to commit"; exit 0
+      fi
+      git commit -m "ci(${{ parameters.env }}): bump ${{ parameters.app }} to $(${{ parameters.tagVar }})"
+      git push origin HEAD:$(Build.SourceBranchName)
+    displayName: 'Commit + push GitOps bump'

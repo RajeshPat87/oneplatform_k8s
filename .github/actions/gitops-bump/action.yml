@@ -1,0 +1,37 @@
+name: gitops-bump
+description: Bump image tag in argocd-apps/<env>/<app>.yaml and commit.
+inputs:
+  app:
+    required: true
+    description: 'Application short name (calculator-backend/frontend/ai-service)'
+  env:
+    required: true
+    description: 'Target environment dev|staging|prod'
+  tag:
+    required: true
+    description: 'New image tag'
+runs:
+  using: composite
+  steps:
+    - name: Configure git
+      shell: bash
+      run: |
+        git config user.name "oneplatform-bot"
+        git config user.email "oneplatform-bot@users.noreply.github.com"
+    - name: Bump tag
+      shell: bash
+      run: |
+        python3 scripts/gitops_bump.py \
+          --env "${{ inputs.env }}" \
+          --app "${{ inputs.app }}" \
+          --tag "${{ inputs.tag }}"
+    - name: Commit and push
+      shell: bash
+      run: |
+        git add "argocd-apps/${{ inputs.env }}/${{ inputs.app }}.yaml"
+        if git diff --cached --quiet; then
+          echo "nothing to commit"
+          exit 0
+        fi
+        git commit -m "ci(${{ inputs.env }}): bump ${{ inputs.app }} to ${{ inputs.tag }}"
+        git push

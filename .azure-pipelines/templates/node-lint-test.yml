@@ -1,0 +1,29 @@
+parameters:
+  - name: appDir
+    type: string
+  - name: nodeVersion
+    type: string
+    default: '20.x'
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '${{ parameters.nodeVersion }}'
+    displayName: 'Use Node ${{ parameters.nodeVersion }}'
+
+  - bash: npm install --no-audit --no-fund
+    workingDirectory: ${{ parameters.appDir }}
+    displayName: 'npm install'
+
+  - bash: npm run lint || true
+    workingDirectory: ${{ parameters.appDir }}
+    displayName: 'ESLint'
+
+  - bash: npm test
+    workingDirectory: ${{ parameters.appDir }}
+    displayName: 'Vitest + coverage'
+
+  - task: PublishCodeCoverageResults@2
+    condition: always()
+    inputs:
+      summaryFileLocation: '${{ parameters.appDir }}/coverage/lcov.info'
