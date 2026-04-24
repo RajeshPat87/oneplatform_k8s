@@ -41,8 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: returntocorp/semgrep-action@v1
-        with: { config: 'p/ci p/python p/security-audit' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Semgrep scan
+        run: |
+          pip install semgrep==1.94.0
+          semgrep scan --severity ERROR --error --config p/ci --config p/python --config p/security-audit apps/calculator-ai-service
 
   build-scan-push:
     needs: [lint-test, sast]
