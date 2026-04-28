@@ -19,12 +19,13 @@ variable "project" {
 
 variable "aks_node_count" {
   type    = number
-  default = 3
+  default = 2
 }
 
 variable "aks_vm_size" {
-  type    = string
-  default = "Standard_D4s_v5"
+  type        = string
+  default     = "Standard_DC2as_v5"
+  description = "Subscription only permits DC/EC/FX/HB/M/NC/NV SKUs in eastus; DC2as_v5 is the smallest viable option for AKS system pool."
 }
 
 variable "aks_k8s_version" {
