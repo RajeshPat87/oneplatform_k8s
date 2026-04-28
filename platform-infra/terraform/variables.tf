@@ -18,8 +18,9 @@ variable "project" {
 }
 
 variable "aks_node_count" {
-  type    = number
-  default = 2
+  type        = number
+  default     = 1
+  description = "Single node fits the 4-vCPU regional quota with overhead and keeps free-trial spend low (~$75/mo)."
 }
 
 variable "aks_vm_size" {
