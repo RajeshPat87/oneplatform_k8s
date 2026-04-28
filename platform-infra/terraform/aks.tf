@@ -51,16 +51,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
   tags = azurerm_resource_group.stack["aks"].tags
 }
 
-# User pool for workload pods
-resource "azurerm_kubernetes_cluster_node_pool" "apps" {
-  name                  = "apps"
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
-  vm_size               = var.aks_vm_size
-  node_count            = var.aks_node_count
-  vnet_subnet_id        = azurerm_subnet.aks.id
-  mode                  = "User"
-  node_labels           = { workload = "apps" }
-}
+# NOTE: dedicated "apps" user node pool removed for dev — subscription
+# regional vCPU quota in eastus is only 4 (consumed by 2x DC2as_v5 system
+# nodes). Workloads run on the system pool until quota is increased.
 
 # Allow AKS kubelet identity to pull from ACR
 resource "azurerm_role_assignment" "aks_acr_pull" {
