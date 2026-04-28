@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: ${{ env.TF_VERSION }} }
+        with: { terraform_version: '${{ env.TF_VERSION }}' }
       - run: terraform -chdir=${{ env.TF_DIR }} fmt -check -recursive
       - run: terraform -chdir=${{ env.TF_DIR }} init -backend=false
       - run: terraform -chdir=${{ env.TF_DIR }} validate
@@ -36,7 +36,7 @@ jobs:
       - run: tflint --chdir=${{ env.TF_DIR }} --recursive
       - name: tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
-        with: { working_directory: ${{ env.TF_DIR }}, soft_fail: false }
+        with: { working_directory: '${{ env.TF_DIR }}', soft_fail: false }
 
   plan:
     needs: validate
@@ -52,11 +52,11 @@ jobs:
       - name: Ensure TF backend (RG + SA + container)
         run: ./scripts/ensure-tf-backend.sh
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: ${{ env.TF_VERSION }} }
+        with: { terraform_version: '${{ env.TF_VERSION }}' }
       - run: terraform -chdir=${{ env.TF_DIR }} init
       - run: terraform -chdir=${{ env.TF_DIR }} plan -no-color -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" -out=tfplan
       - uses: actions/upload-artifact@v4
-        with: { name: tfplan, path: ${{ env.TF_DIR }}/tfplan }
+        with: { name: tfplan, path: '${{ env.TF_DIR }}/tfplan' }
 
   apply:
     needs: validate
@@ -73,6 +73,6 @@ jobs:
       - name: Ensure TF backend (RG + SA + container)
         run: ./scripts/ensure-tf-backend.sh
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: ${{ env.TF_VERSION }} }
+        with: { terraform_version: '${{ env.TF_VERSION }}' }
       - run: terraform -chdir=${{ env.TF_DIR }} init
       - run: terraform -chdir=${{ env.TF_DIR }} apply -auto-approve -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}"

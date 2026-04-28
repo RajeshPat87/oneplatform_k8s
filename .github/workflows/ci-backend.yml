@@ -53,7 +53,8 @@ jobs:
         with: { python-version: '3.12' }
       - name: Semgrep scan
         run: |
-          pip install semgrep==1.94.0
+          pip install --upgrade pip
+          pip install 'setuptools<81' semgrep
           semgrep scan --severity ERROR --error --config p/ci --config p/python --config p/security-audit apps/calculator-backend
 
   build-scan-push:
