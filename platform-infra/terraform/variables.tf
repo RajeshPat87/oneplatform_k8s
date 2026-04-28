@@ -28,8 +28,9 @@ variable "aks_vm_size" {
 }
 
 variable "aks_k8s_version" {
-  type    = string
-  default = "1.30.5"
+  type        = string
+  default     = ""
+  description = "Pin AKS version (e.g. 1.32.5). Leave empty to use latest GA from azurerm_kubernetes_service_versions."
 }
 
 variable "vnet_cidr" {

@@ -1,7 +1,7 @@
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "vault" {
-  name                       = "kv-${local.suffix}-${random_string.acr_suffix.result}"
+  name                       = "kv-${var.env}-${random_string.acr_suffix.result}"
   resource_group_name        = azurerm_resource_group.stack["security_mesh"].name
   location                   = var.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id

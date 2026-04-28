@@ -1,3 +1,8 @@
+data "azurerm_kubernetes_service_versions" "current" {
+  location        = var.location
+  include_preview = false
+}
+
 resource "azurerm_log_analytics_workspace" "obs" {
   name                = "law-${local.suffix}"
   resource_group_name = azurerm_resource_group.stack["observability"].name
@@ -12,7 +17,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name = azurerm_resource_group.stack["aks"].name
   location            = var.location
   dns_prefix          = "aks-${local.suffix}"
-  kubernetes_version  = var.aks_k8s_version
+  kubernetes_version  = var.aks_k8s_version != "" ? var.aks_k8s_version : data.azurerm_kubernetes_service_versions.current.latest_version
   # Dedicated node RG so cluster-managed resources stay inside the AKS RG boundary.
   node_resource_group = "rg-${local.suffix}-aks-nodes"
 
